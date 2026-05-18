@@ -18,7 +18,7 @@
 |--------|--------|
 | `CREATED` | Poll every 30s. Wait up to 60s — if still CREATED, keep waiting. |
 | `IN_PROGRESS` | Poll every 30–45s. Fetch journal records with pagination. |
-| `COMPLETED` | Stop polling. Fetch full journal `--order DESC --max-items 10`, then recommendations. |
+| `COMPLETED` | Stop polling. Fetch full journal `--order DESC --max-items 10`, then trigger mitigation (2-5 min) via `update-backlog-task --task-status PENDING_START`. |
 | `FAILED` | Stop polling. Fetch journal — partial findings often exist. |
 
 Never poll faster than 30s — you'll hit throttling.
@@ -71,7 +71,7 @@ Show the chat response immediately. Update the user with investigation progress 
 
 ### Trigger mitigation on a completed investigation
 
-If a previous investigation completed without recommendations:
+If a previous investigation completed without recommendations, trigger mitigation (2-5 min):
 
 ```
 aws___call_aws(cli_command="aws devops-agent update-backlog-task \
@@ -81,4 +81,21 @@ aws___call_aws(cli_command="aws devops-agent update-backlog-task \
   --region us-east-1")
 ```
 
-This activates the Mitigation Agent on the existing investigation (2–5 min). Poll `get-backlog-task` until `COMPLETED`, then `list-recommendations`.
+Poll `get-backlog-task` until `COMPLETED`, then retrieve the mitigation plan:
+
+```
+aws___call_aws(cli_command="aws devops-agent list-executions \
+  --agent-space-id SPACE_ID \
+  --task-id TASK_ID \
+  --region us-east-1")
+```
+
+Find the newest execution_id, then:
+
+```
+aws___call_aws(cli_command="aws devops-agent list-journal-records \
+  --agent-space-id SPACE_ID \
+  --execution-id EXEC_ID \
+  --record-type mitigation_summary_md \
+  --region us-east-1")
+```
