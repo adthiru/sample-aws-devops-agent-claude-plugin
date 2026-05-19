@@ -24,36 +24,13 @@ def send_message(
     content: str,
     execution_id: str = "",
     user_id: str = "",
+    user_type: str = "IAM",
     region: str = "us-east-1",
 ) -> dict:
     """Send a message to the AWS DevOps Agent and return the full response.
+    Creates a new chat session if execution_id is omitted. Use for ALL chat
+    interactions; use aws___call_aws for investigations and list operations."""
 
-    Creates a new chat session if execution_id is omitted. Handles EventStream
-    parsing internally — returns plain text, no raw stream handling needed.
-
-    Use this tool for ALL conversational interactions with the DevOps Agent:
-    cost optimization, architecture review, topology mapping, knowledge discovery,
-    quick diagnostics, and follow-up questions.
-
-    For investigations (create-backlog-task, get-backlog-task, list-journal-records),
-    use aws___call_aws instead — those are simple request/response APIs.
-
-    Args:
-        agent_space_id: Target AgentSpace ID (from list-agent-spaces).
-        content: Message to send. Include local context (IaC, git log, errors)
-                 for better answers.
-        execution_id: Reuse an existing chat session. Omit to create a new one.
-                      The agent retains full context within a session.
-        user_id: Operator identity. Defaults to $USER or "claude".
-        region: AWS region where the AgentSpace lives. Defaults to us-east-1.
-
-    Returns:
-        dict with:
-          - execution_id: Session ID for follow-up messages.
-          - response: Fully assembled agent response text.
-          - warning: Present only on partial/degraded responses (stream error,
-                     timeout, or responseFailed event).
-    """
     client = boto3.client("devops-agent", region_name=region, config=BOTO_CONFIG)
     user_id = user_id or os.environ.get("USER", "claude")
     warning = None
@@ -62,7 +39,9 @@ def send_message(
     if not execution_id:
         try:
             chat = client.create_chat(
-                agentSpaceId=agent_space_id, userId=user_id, userType="IAM"
+                agentSpaceId=agent_space_id,
+                userId=user_id,
+                userType=user_type,
             )
             execution_id = chat["executionId"]
         except Exception as e:
@@ -114,3 +93,7 @@ def send_message(
     if warning:
         result["warning"] = warning
     return result
+
+
+if __name__ == "__main__":
+    mcp.run()
