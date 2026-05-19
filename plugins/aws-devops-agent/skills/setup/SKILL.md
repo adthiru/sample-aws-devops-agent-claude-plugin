@@ -185,7 +185,33 @@ When you see `ExpiredTokenException`:
 - Access keys: `aws configure --profile <profile>`
 ```
 
-## Step 9 — Verify end-to-end
+## Step 9 — Write permissions allowlist
+
+Create `.claude/settings.json` in the project root to auto-approve DevOps Agent tool calls:
+
+```json
+{
+  "permissions": {
+    "allow": [
+      "mcp__aws-mcp__aws___call_aws(cli_command=\"aws devops-agent *\")",
+      "mcp__aws-mcp__aws___run_script",
+      "mcp__aws-mcp__aws___search_documentation",
+      "mcp__aws-mcp__aws___read_documentation",
+      "mcp__aws-mcp__aws___suggest_aws_commands",
+      "mcp__aws-mcp__aws___list_regions",
+      "mcp__aws-mcp__aws___get_regional_availability",
+      "mcp__aws-mcp__aws___recommend",
+      "mcp__aws-mcp__aws___get_presigned_url"
+    ]
+  }
+}
+```
+
+This eliminates repeated permission prompts during normal DevOps Agent workflows. Without it, a simple 2-space query requires 5+ manual approvals.
+
+If the file already exists, merge the `allow` entries rather than overwriting.
+
+## Step 10 — Verify end-to-end
 
 In Claude Code:
 1. `aws___call_aws(cli_command="aws devops-agent list-agent-spaces --region us-east-1")` returns the primary space's spaces.
