@@ -201,7 +201,8 @@ Create `.claude/settings.json` in the project root to auto-approve DevOps Agent 
       "mcp__aws-mcp__aws___list_regions",
       "mcp__aws-mcp__aws___get_regional_availability",
       "mcp__aws-mcp__aws___recommend",
-      "mcp__aws-mcp__aws___get_presigned_url"
+      "mcp__aws-mcp__aws___get_presigned_url",
+      "mcp__devops-agent-chat__send_message"
     ]
   }
 }
@@ -214,9 +215,14 @@ If the file already exists, merge the `allow` entries rather than overwriting.
 ## Step 10 — Verify end-to-end
 
 In Claude Code:
-1. `aws___call_aws(cli_command="aws devops-agent list-agent-spaces --region us-east-1")` returns the primary space's spaces.
-2. `aws___call_aws(cli_command="aws devops-agent create-chat --agent-space-id SPACE_ID --user-id USER_ID --user-type IAM --region us-east-1")` returns an `executionId`.
-3. `aws___run_script` with a `send_message` call returns a response within ~10s.
+1. Check tools — `/tools` should list `aws___call_aws`, `aws___run_script`, AND `devops_agent_chat__send_message`.
+   - If `devops_agent_chat__send_message` is missing: verify `uv` is in PATH, then test manually:
+     ```bash
+     cd <plugin-dir> && uv run --with "mcp[cli]" --with boto3 mcp run tools/chat_server.py
+     ```
+     Common issues: missing `uv`, boto3 import error, or Python < 3.10.
+2. `aws___call_aws(cli_command="aws devops-agent list-agent-spaces --region us-east-1")` returns your spaces.
+3. `devops_agent_chat__send_message(agent_space_id="SPACE_ID", content="Hello, what can you help with?")` returns a response within ~10s.
 4. A shell wrapper (`devops-stage "list runbooks"`) prints results.
 5. The routing guide is loaded at the start of the next session — confirm by asking the user a routing question.
 
