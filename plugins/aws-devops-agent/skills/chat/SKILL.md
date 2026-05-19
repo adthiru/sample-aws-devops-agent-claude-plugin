@@ -12,7 +12,25 @@ description: >-
 
 Chat is the **default**. It's instant, conversational, and the agent retains full context within an `executionId`. Only escalate to `create-backlog-task` when the user describes an incident or the agent itself suggests deeper analysis is warranted.
 
-## Workflow
+## How to send messages
+
+**Preferred — use the local chat tool:**
+
+```
+devops_agent_chat__send_message(
+    agent_space_id="SPACE_ID",
+    content="[Local Context]\n<IaC, git log, errors>\n\n[Question]\nWhat's causing the 503 errors?"
+)
+→ {"execution_id": "uuid", "response": "Based on my analysis...", "warning": null}
+```
+
+This handles CreateChat, SendMessage, and EventStream parsing internally. One call, plain text back. Reuse `execution_id` for follow-ups in the same conversation.
+
+**Fallback — if `devops_agent_chat__send_message` is not in your available tools** (local MCP server didn't start), use the `aws___run_script` path below. Tell the user: "Local chat server unavailable — using raw AWS MCP path. Run the setup skill to configure it."
+
+---
+
+## Fallback workflow (aws___run_script)
 
 > **Note:** Replace `USER_ID` with the operator's identifier — typically `${USER}` (the Unix username) or `claude` if unavailable. The value must match `^[a-zA-Z0-9_.-]+$`. Do **not** pass the literal string "USER_ID".
 
@@ -127,31 +145,15 @@ The AWS MCP Server's `aws___run_script` sandbox blocks certain Python constructs
 
 **executionId format**: `call_boto3(SendMessage)` only works with chat executionIds (pure UUID from `create-chat`). Investigation executionIds (`exe-ops1-*` format) require the `aws___call_aws` CLI path.
 
-## Handling timeouts
+## Timeout behavior
 
-`aws___run_script` has a synchronous execution window. If the DevOps Agent takes longer than expected (common for complex queries), you may receive a `task_id` response instead of the full stream:
+The local chat tool (`devops_agent_chat__send_message`) has a 180s boto3 read timeout and 180s MCP timeout — it handles slow agent responses internally. No `task_id` polling needed.
 
-```json
-{"task_id": "abc123", "status": "working"}
-```
+If using the fallback `aws___run_script` path and you receive a `task_id` with `"working"` status:
+1. Wait 15s, then retry with the task_id (up to 3 attempts).
+2. If expired, reuse the same `executionId` and resend — the agent retains context.
 
-When this happens:
-1. Wait 10-15 seconds, then poll the task:
-   ```
-   aws___run_script(code="""
-   response = await call_boto3(
-       service_name='devops-agent',
-       operation_name='GetTaskResult',
-       region_name='us-east-1',
-       params={'taskId': 'TASK_ID'}
-   )
-   print(response)
-   """)
-   ```
-2. If still `"working"`, wait another 15s and retry (up to 3 attempts).
-3. If the task expired, **reuse the same `executionId`** and resend — the agent still has context.
-
-> **Tip:** Complex questions about large IaC stacks or multi-service topology tend to take 30-90s. Setting realistic expectations with the user avoids confusion.
+> **Tip:** Complex questions about large IaC stacks or multi-service topology take 30-90s. The local chat tool handles this transparently.
 
 ## Chat session lifecycle
 
