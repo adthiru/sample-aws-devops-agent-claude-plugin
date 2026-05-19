@@ -15,6 +15,7 @@ Investigate AWS incidents, optimize costs, review architecture, and route questi
 | **Command** `/aws-devops-agent:spaces` | `commands/spaces.md` | User types it explicitly |
 | **Command** `/aws-devops-agent:cost` | `commands/cost.md` | User types it explicitly |
 | **MCP server** `aws-mcp` | `.mcp.json` | Auto-loaded; provides `aws___call_aws`, `aws___run_script`, and other AWS MCP Server tools |
+| **MCP server** `devops-agent-chat` | `.mcp.json` + `tools/chat_server.py` | Auto-loaded; provides `send_message` — handles EventStream parsing internally |
 
 ## Prerequisites
 
@@ -80,7 +81,8 @@ Claude Code prompts for approval on every tool call by default. For a smooth exp
       "mcp__aws-mcp__aws___list_regions",
       "mcp__aws-mcp__aws___get_regional_availability",
       "mcp__aws-mcp__aws___recommend",
-      "mcp__aws-mcp__aws___get_presigned_url"
+      "mcp__aws-mcp__aws___get_presigned_url",
+      "mcp__devops-agent-chat__send_message"
     ]
   }
 }
