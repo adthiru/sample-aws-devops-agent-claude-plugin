@@ -212,7 +212,21 @@ This eliminates repeated permission prompts during normal DevOps Agent workflows
 
 If the file already exists, merge the `allow` entries rather than overwriting.
 
-## Step 10 — Verify end-to-end
+## Step 10 — Enable the local chat server
+
+Claude Code requires MCP servers from plugins to be explicitly enabled. Add `"devops-agent-chat"` to your project's `.claude/settings.local.json`:
+
+```json
+{
+  "enabledMcpjsonServers": ["devops-agent-chat"]
+}
+```
+
+If the file already exists, append to the existing array. Without this entry, the local chat tool won't appear in your available tools — forcing the slower `aws___run_script` fallback.
+
+After editing, run `/reload-plugins` for the change to take effect.
+
+## Step 11 — Verify end-to-end
 
 In Claude Code:
 1. Check tools — `/tools` should list `aws___call_aws`, `aws___run_script`, AND `devops_agent_chat__send_message`.
