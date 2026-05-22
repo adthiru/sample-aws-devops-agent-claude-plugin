@@ -17,6 +17,8 @@
       "transport": "stdio",
       "args": [
         "run",
+        "--directory",
+        "${CLAUDE_PLUGIN_ROOT}",
         "--with",
         "mcp[cli]",
         "--with",
