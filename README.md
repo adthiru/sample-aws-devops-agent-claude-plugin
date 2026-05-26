@@ -136,6 +136,107 @@ Validate before pushing:
 claude plugin validate ./claude-aws-devops-agent
 ```
 
+## Using with Kiro CLI
+
+This repo can be used directly with Kiro CLI by creating agent spec files in a `.kiro/agents/` directory. The skills in `plugins/aws-devops-agent/skills/` are reused as-is.
+
+### Prerequisites
+
+1. **kiro-cli** installed
+2. **uv** installed:
+   ```bash
+   curl -LsSf https://astral.sh/uv/install.sh | sh
+   ```
+3. **AWS credentials** configured:
+   ```bash
+   export AWS_PROFILE=<your-aws-profile>
+   aws sso login
+   ```
+
+### Step 1 — Clone the repo
+
+```bash
+git clone https://github.com/aws-samples/sample-aws-devops-agent-claude-plugin
+cd sample-aws-devops-agent-claude-plugin
+```
+
+### Step 2 — Create the agent spec directory
+
+```bash
+mkdir -p .kiro/agents
+```
+
+### Step 3 — Create the agent spec file
+
+Create `.kiro/agents/aws-devops-agent.agent-spec.json`:
+
+```json
+{
+  "name": "aws-devops-agent",
+  "description": "Investigate incidents, optimize costs, review architecture, and map topology with the AWS DevOps Agent.",
+  "tools": ["*"],
+  "resources": [
+    "skill://plugins/aws-devops-agent/skills/investigate/SKILL.md",
+    "skill://plugins/aws-devops-agent/skills/chat/SKILL.md",
+    "skill://plugins/aws-devops-agent/skills/multi-space/SKILL.md",
+    "skill://plugins/aws-devops-agent/skills/setup/SKILL.md"
+  ],
+  "mcpServers": {
+    "aws-mcp": {
+      "command": "uvx",
+      "timeout": 100000,
+      "args": [
+        "mcp-proxy-for-aws@latest",
+        "https://aws-mcp.us-east-1.api.aws/mcp",
+        "--metadata", "AWS_REGION=us-east-1"
+      ]
+    },
+    "devops-agent-chat": {
+      "command": "uv",
+      "timeout": 200000,
+      "args": [
+        "run",
+        "--with", "mcp[cli]",
+        "--with", "boto3",
+        "mcp", "run",
+        "plugins/aws-devops-agent/tools/chat_server.py"
+      ]
+    }
+  }
+}
+```
+
+### Step 4 — Start a session
+
+Run `kiro-cli` from the repo root (where the `.kiro` directory is):
+
+```bash
+cd sample-aws-devops-agent-claude-plugin
+kiro-cli
+```
+
+Then load the agent:
+
+```
+/agent aws-devops-agent
+```
+
+### Verify it works
+
+Check that both MCP servers connected:
+
+```
+/mcp
+```
+
+You should see `aws-mcp` (with tools like `aws___call_aws`, `aws___run_script`) and `devops-agent-chat` (with `send_message`).
+
+Then try:
+- "What runbooks does the agent have?" — uses the `chat` skill
+- "Investigate why my ECS service is returning 503s" — uses the `investigate` skill
+
+If you get credential errors, ensure `AWS_PROFILE` is set and `aws sso login` was run before launching `kiro-cli`.
+
 ## Contributing
 
 PRs welcome. Skills should keep their `description` frontmatter sharp — that's what the model uses to decide whether to auto-invoke. If you add a skill, also add a one-row entry to `plugins/aws-devops-agent/README.md`.
